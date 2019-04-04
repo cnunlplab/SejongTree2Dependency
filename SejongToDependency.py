@@ -6,49 +6,62 @@ def main():
     parser.add_argument('-root_dir', type=str, required=True)
     parser.add_argument('-file_name', type=str, default="")
     parser.add_argument('-save_file', type=str, default="result")
-    parser.add_argument('-head_initial_file', type=str, default="./Rules/linear_rules.txt")
+    parser.add_argument('-head_initial', type=str, default="./Rules/linear_rules.txt")
     parser.add_argument('-head_final', type=int, default=0)
 
     opt = parser.parse_args()
     head_final = bool(opt.head_final)
 
     if head_final:
-        save_path = "{}-{}".format("head_final", opt.save_file)
-        error_path = "{}-{}_error".format("head_final", opt.save_file)
+        save_path = "{}-{}.txt".format(opt.save_file, "head_final")
+        error_path = "{}-{}.error".format(opt.save_file, "head_final")
     else:
-        save_path = "{}".format(opt.save_file, )
-        error_path = "{}_error".format(opt.save_file, )
+        save_path = "{}-{}.txt".format(opt.save_file, "non_head_final")
+        error_path = "{}-{}.error".format(opt.save_file, "non_head_final")
 
     error_count = 0
 
     corpus_dir_path = opt.root_dir
     sent_tree_list = []
+    fail_file = []
     if opt.file_name != "":
-        f_text = "".join([line for line in open(os.path.join(corpus_dir_path, opt.file_name), encoding='utf-8')])
-        text = f_text.split("<body>")[1].split("</body>")[0].strip()
-
-        sent_tree_s = text.split("\n\n")
-
-        for sent_tree in sent_tree_s:
-            sent = sent_tree.split("\n")[0].replace("; ", "")
-            tree = "\n".join(sent_tree.split("\n")[1:])
-
-            sent_tree_list.append((sent, tree, opt.file_name))
-    else:
-        for f_path in sorted(os.listdir(corpus_dir_path)):
-            if f_path.endswith("~"):
-                continue
-
-            f_text = "".join([line for line in open(os.path.join(corpus_dir_path, f_path), encoding='utf-8')])
+        try:
+            f_text = "".join([line for line in open(os.path.join(corpus_dir_path, opt.file_name), 'r', encoding='utf-8')])
             text = f_text.split("<body>")[1].split("</body>")[0].strip()
 
-            sent_tree_s = text.split("\n\n")
+            sent_tree_s = text.split(";")
 
             for sent_tree in sent_tree_s:
-                sent = sent_tree.split("\n")[0].replace("; ", "")
+                sent_tree = sent_tree.strip()
+                sent = sent_tree.split("\n")[0].strip()
                 tree = "\n".join(sent_tree.split("\n")[1:])
 
-                sent_tree_list.append((sent, tree, f_path))
+                sent_tree_list.append((sent, tree, opt.file_name))
+        except UnicodeDecodeError:
+            fail_file.append(opt.file_name)
+    else:
+        for f_path in sorted(os.listdir(corpus_dir_path)):
+            if f_path.endswith("~") or f_path.startswith("."):
+                continue
+            try:
+                f_text = "".join([line for line in open(os.path.join(corpus_dir_path, f_path))])
+                text = f_text.split("<body>")[1].split("</body>")[0].strip()
+
+                sent_tree_s = text.split(";")
+
+                for sent_tree in sent_tree_s:
+                    sent_tree = sent_tree.strip()
+                    sent = sent_tree.split("\n")[0].strip()
+                    tree = "\n".join(sent_tree.split("\n")[1:])
+
+                    sent_tree_list.append((sent, tree, f_path))
+            except UnicodeDecodeError:
+                fail_file.append(f_path)
+
+    if len(sent_tree_list) == 0:
+        print("File Encoding 오류({}) 기본 인코딩은 utf-8입니다.".format(len(fail_file)))
+        print("\n".join(fail_file))
+        exit()
 
     print("SENTENCES SIZE: {}".format(len(sent_tree_list)))
 
@@ -57,12 +70,12 @@ def main():
 
     start = time.time()
     if head_final:
-        cst = ConstitiuentStructureTree(opt.head_initial_file, symbol_rules=False, head_final=head_final)
+        cst = ConstitiuentStructureTree(opt.head_initial, symbol_rules=False, head_final=head_final)
     else:
-        cst = ConstitiuentStructureTree(opt.head_initial_file, symbol_rules=True, head_final=head_final)
+        cst = ConstitiuentStructureTree(opt.head_initial, symbol_rules=True, head_final=head_final)
     for sent_id, (ori_sent, struct, ref) in enumerate(sent_tree_list):
-        sent_id = sent_id + 1
-        sys.stdout.write('\r{}/{}'.format(sent_id, len(sent_tree_list)))
+        #sent_id = sent_id + 1
+        sys.stdout.write('\r{}/{}'.format(sent_id + 1, len(sent_tree_list)))
         sys.stdout.flush()
         cst.reset()
 
@@ -165,13 +178,15 @@ def main():
             log.append('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(node_idx, node[0], node[1], node[2], node[3], node[4], node[5], node[6], node[7], node[8]))
         log.append("\n")
 
-    with open(save_path, 'w', encoding='utf-8') as f:
+    with open(save_path, 'w') as f:
         f.write('\n'.join(log))
     if len(log_error) > 0:
-        with open(error_path, 'w', encoding='utf-8') as f:
+        with open(error_path, 'w') as f:
             f.write('\n'.join(log_error))
     print("\nfinish")
     print("error_count : {error_count} elapse : {elapse:3.3f} min".format(error_count=error_count, elapse=(time.time()-start)/60))
-
+    if len(fail_file) > 0:
+        print("File Encoding 오류({}) 기본 인코딩은 utf-8입니다.".format(len(fail_file)))
+        print("\n".join(fail_file))
 main()
 
