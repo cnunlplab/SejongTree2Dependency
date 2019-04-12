@@ -2,6 +2,8 @@ from Tree import *
 import re, os, sys, argparse, time
 
 def main():
+    #python SejongToDependency.py -root_dir ./Corpus -file_name BGHO0409.utf8.txt -save_file test -head_final 0 --> non_rigid
+    #python SejongToDependency.py -root_dir ./Corpus -file_name BGHO0409.utf8.txt -save_file test -head_final 1 --> rigid
     parser = argparse.ArgumentParser()
     parser.add_argument('-root_dir', type=str, required=True)
     parser.add_argument('-file_name', type=str, default="")
@@ -27,16 +29,23 @@ def main():
     if opt.file_name != "":
         try:
             f_text = "".join([line for line in open(os.path.join(corpus_dir_path, opt.file_name), 'r', encoding='utf-8')])
-            text = f_text.split("<body>")[1].split("</body>")[0].strip()
+            lines = [x.strip() for x in f_text.split("<body>")[1].split("</body>")[0].strip().split("\n") if x.strip() != ""]
+            sent_tree = []
 
-            sent_tree_s = text.split(";")
+            for line in lines:
+                if re.search("^;", line):
+                    if len(sent_tree) > 0:
+                        tree = "\n".join(sent_tree)
+                        sent_tree_list.append((sent, tree, opt.file_name))
+                    sent = line[1:].strip()
+                    sent_tree = []
+                else:
+                    sent_tree.append(line)
 
-            for sent_tree in sent_tree_s:
-                sent_tree = sent_tree.strip()
-                sent = sent_tree.split("\n")[0].strip()
-                tree = "\n".join(sent_tree.split("\n")[1:])
-
+            if len(sent_tree) > 0:
+                tree = "\n".join(sent_tree)
                 sent_tree_list.append((sent, tree, opt.file_name))
+
         except UnicodeDecodeError:
             fail_file.append(opt.file_name)
     else:
@@ -45,15 +54,22 @@ def main():
                 continue
             try:
                 f_text = "".join([line for line in open(os.path.join(corpus_dir_path, f_path))])
-                text = f_text.split("<body>")[1].split("</body>")[0].strip()
+                lines = [x.strip() for x in f_text.split("<body>")[1].split("</body>")[0].strip().split("\n") if x.strip() != ""]
 
-                sent_tree_s = text.split(";")
+                sent_tree = []
 
-                for sent_tree in sent_tree_s:
-                    sent_tree = sent_tree.strip()
-                    sent = sent_tree.split("\n")[0].strip()
-                    tree = "\n".join(sent_tree.split("\n")[1:])
+                for line in lines:
+                    if re.search("^;", line):
+                        if len(sent_tree) > 0:
+                            tree = "\n".join(sent_tree)
+                            sent_tree_list.append((sent, tree, f_path))
+                        sent = line[1:].strip()
+                        sent_tree = []
+                    else:
+                        sent_tree.append(line)
 
+                if len(sent_tree) > 0:
+                    tree = "\n".join(sent_tree)
                     sent_tree_list.append((sent, tree, f_path))
             except UnicodeDecodeError:
                 fail_file.append(f_path)
