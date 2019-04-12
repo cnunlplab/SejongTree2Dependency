@@ -4,6 +4,7 @@
 - **Universal Dependency Relation이 매번 업데이트 될 예정입니다.(180820)**
 
 # Update
+- 190412 ver. 0.9.2 업로드: File format bug fixed.
 - 190404 ver. 0.9.1 업로드(파일 인코딩(utf-8) 이 외 파일 경고 표시)
 - 180820 ver. 0.9 업로드
 
